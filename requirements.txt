@@ -1,0 +1,8 @@
+flask
+torch
+torchvision
+opencv-python
+numpy
+Pillow
+google-generativeai
+googletrans==4.0.0-rc1

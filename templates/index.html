@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aura - Your Emotion-Aware Companion</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="main-container">
+        <div class="media-panel">
+            <h2>Live Camera Feed</h2>
+            <section id="video-container">
+                <img src="{{ url_for('video_feed') }}" alt="Live Webcam Feed">
+            </section>
+        </div>
+
+        <div class="chat-panel">
+            <section id="chat-container">
+                <div class="chat-bubble assistant-bubble">
+                    <p class="label">Aura:</p>
+                    <p>Hello! How are you feeling today? Select a language and press the mic to talk to me.</p>
+                </div>
+            </section>
+            
+            <section class="controls">
+                <div class="language-selector">
+                    <button id="lang-en" class="lang-btn" onclick="setLanguage('en-US', this)">English</button>
+                    <button id="lang-bn" class="lang-btn" onclick="setLanguage('bn-IN', this)">বাংলা</button>
+                </div>
+                <button id="mic-btn">🎙️</button>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        // আপনার আগের জাভাস্ক্রিপ্ট কোডটি এখানে থাকবে।
+        // কোনো পরিবর্তন করার প্রয়োজন নেই।
+        let currentLang = 'en-US';
+        let isListening = false;
+        let voices = [];
+        let speechReady = false;
+        const micBtn = document.getElementById('mic-btn');
+        const chatContainer = document.getElementById('chat-container');
+        const audioPlayer = new Audio();
+
+        function loadVoices() { voices = window.speechSynthesis.getVoices(); }
+        if (speechSynthesis.onvoiceschanged !== undefined) { speechSynthesis.onvoiceschanged = loadVoices; }
+        
+        function initializeSpeechSynthesis() {
+            if (speechReady) return;
+            const primer = new SpeechSynthesisUtterance('');
+            window.speechSynthesis.speak(primer);
+            speechReady = true;
+        }
+
+        function setLanguage(lang, element) {
+            currentLang = lang;
+            document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
+            element.classList.add('active');
+        }
+
+        function addChatBubble(text, sender) {
+            const bubble = document.createElement('div');
+            bubble.classList.add('chat-bubble', `${sender}-bubble`);
+            const label = sender === 'user' ? 'You:' : 'Aura:';
+            bubble.innerHTML = `<p class="label">${label}</p><p>${text}</p>`;
+            chatContainer.appendChild(bubble);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) {
+            const recognition = new SpeechRecognition();
+            recognition.interimResults = false;
+            recognition.onstart = () => { isListening = true; micBtn.classList.add('listening'); };
+            recognition.onend = () => { isListening = false; micBtn.classList.remove('listening'); };
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                addChatBubble(transcript, 'user');
+                getAssistantResponse(transcript);
+            };
+            micBtn.addEventListener('click', () => {
+                initializeSpeechSynthesis();
+                if (isListening) { recognition.stop(); }
+                else {
+                    if (!audioPlayer.paused) { audioPlayer.pause(); audioPlayer.currentTime = 0; }
+                    recognition.lang = currentLang;
+                    recognition.start();
+                }
+            });
+        }
+        
+        function speak(text) {
+            const langCode = currentLang.split('-')[0];
+            const audioUrl = `/synthesize_speech?text=${encodeURIComponent(text)}&lang=${langCode}`;
+            audioPlayer.src = audioUrl;
+            audioPlayer.play();
+        }
+
+        async function getAssistantResponse(userText) {
+            addChatBubble("Thinking...", 'assistant');
+            try {
+                const response = await fetch('/ask_assistant', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: userText, lang: currentLang })
+                });
+                const data = await response.json();
+                chatContainer.removeChild(chatContainer.lastChild); 
+                addChatBubble(data.response_text, 'assistant');
+                speak(data.response_text);
+            } catch (error) {
+                console.error("Error asking assistant:", error);
+                chatContainer.removeChild(chatContainer.lastChild);
+                addChatBubble("Sorry, I'm having trouble connecting.", 'assistant');
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('lang-en').classList.add('active');
+            loadVoices();
+        });
+    </script>
+</body>
+</html>
