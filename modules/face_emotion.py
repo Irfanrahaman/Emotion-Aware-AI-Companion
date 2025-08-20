@@ -4,8 +4,6 @@ import torch.nn.functional as F
 from torchvision import transforms
 from PIL import Image
 
-# একটি সাধারণ CNN আর্কিটেকচার যা FER2013 ডেটাসেটের জন্য উপযুক্ত
-# আপনার 'fer_model.pth' ফাইলটি অবশ্যই এই আর্কিটেকচারের সাথে মিলতে হবে
 class FERModel(nn.Module):
     def __init__(self):
         super(FERModel, self).__init__()
@@ -28,14 +26,14 @@ class FERModel(nn.Module):
         x = self.fc3(x)
         return x
 
-# গ্লোবাল ভেরিয়েবল যেন মডেল একবারই লোড হয়
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = FERModel().to(device)
 emotion_labels = ['Angry', 'Disgust', 'Fear', 'Happy', 'Sad', 'Surprise', 'Neutral']
 
-# মডেল লোড করার চেষ্টা করা হচ্ছে
+
 try:
-    # আপনার প্রশিক্ষিত মডেলের পাথ দিন
+    
     model.load_state_dict(torch.load('models/fer_model.pth', map_location=device))
     model.eval()
     print("✅ Facial Emotion Recognition Model loaded successfully.")
@@ -44,7 +42,7 @@ except FileNotFoundError:
     print("Please make sure the pre-trained model file exists in the 'models' directory.")
     model = None
 
-# ছবি প্রি-প্রসেস করার জন্য ট্রান্সফর্ম
+
 transform = transforms.Compose([
     transforms.Grayscale(num_output_channels=1),
     transforms.Resize((48, 48)),
@@ -53,9 +51,7 @@ transform = transforms.Compose([
 ])
 
 def predict_emotion(face_image_np):
-    """
-    একটি মুখমণ্ডলের ছবি (numpy array) থেকে আবেগ প্রেডিক্ট করে।
-    """
+    
     if model is None:
         return "Model not loaded"
         
